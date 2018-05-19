@@ -58,7 +58,7 @@ public class MeshDeformer : MonoBehaviour {
     void OnCollisionEnter (Collision other) {
         foreach (var contact in other.contacts) {
             var point = contact.point;
-            var force = other.gameObject.GetComponent<Rigidbody> ().mass * 10; // the hevier the object the more force it would exert s
+            var force = other.gameObject.GetComponent<Rigidbody> ().mass * 10; // the hevier the object the more force it would exert
             AddDeformingForce (point, force);
         }
     }
