@@ -1,10 +1,14 @@
 using UnityEngine;
 
+
+public enum DampeningMethod  {spring, normal};
+
 [RequireComponent (typeof (MeshFilter))]
 public class MeshDeformer : MonoBehaviour {
     Mesh deformingMesh;
     MeshCollider meshCollider;
 
+    public DampeningMethod dampeningMethod;
     float dampeningConstant = 2;
     Vector3[] originalVertices, displacedVertices, vertexVelocities;
 
@@ -30,17 +34,28 @@ public class MeshDeformer : MonoBehaviour {
             UpdateVertex (i);
             dampen (i);
         }
-        deformingMesh.vertices = displacedVertices;
+         deformingMesh.vertices = displacedVertices;
         deformingMesh.RecalculateNormals ();
         meshCollider.sharedMesh = null;
         meshCollider.sharedMesh = deformingMesh; // do not do this
     }
 
-    void dampen (int i) {
-        var displacement = displacedVertices[i] - originalVertices[i];
-        if (vertexVelocities[i].magnitude > 0) {
-            vertexVelocities[i] -= displacement * dampeningConstant * Time.deltaTime;
+    void dampen(int i) {
+        if(dampeningMethod == DampeningMethod.spring) {
+            Springdampen(i);
+        } else {
+            Normaldampen(i);
         }
+    }
+
+    void Springdampen (int i) {
+        var displacement = displacedVertices[i] - originalVertices[i];
+        vertexVelocities[i] -= displacement * dampeningConstant * Time.deltaTime;
+        vertexVelocities[i] *= 1f - 1*Time.deltaTime;
+    }
+
+    void Normaldampen (int i) {
+        vertexVelocities[i] *= 1f - 5*Time.deltaTime;
     }
 
     void UpdateVertex (int i) {
@@ -49,7 +64,7 @@ public class MeshDeformer : MonoBehaviour {
     }
 
     void AddForceToVertex (int i, Vector3 point, float force) {
-        Vector3 distance = displacedVertices[i] - point;
+        Vector3 distance = transform.TransformPoint(displacedVertices[i]) - point;
         var attenuatedForce = force / (distance.sqrMagnitude + 1);
         var vertexVelocity = attenuatedForce * Time.deltaTime;
         vertexVelocities[i] += distance.normalized * vertexVelocity;
@@ -58,7 +73,9 @@ public class MeshDeformer : MonoBehaviour {
     void OnCollisionEnter (Collision other) {
         foreach (var contact in other.contacts) {
             var point = contact.point;
-            var force = other.gameObject.GetComponent<Rigidbody> ().mass * 10; // the hevier the object the more force it would exert
+            point += contact.normal*-1f;
+            Rigidbody objectRigidBody = other.gameObject.GetComponent<Rigidbody>();
+            var force = objectRigidBody.mass * objectRigidBody.velocity.magnitude*50; // the hevier the object the more force it would exert
             AddDeformingForce (point, force);
         }
     }
